@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.core.Ordered;
 
 import com.supimpa.todolist.exceptions.AlreadyExistsException;
+import com.supimpa.todolist.exceptions.EntityNotFoundException;
 import com.supimpa.todolist.exceptions.InvalidAttributeValue;
 import com.supimpa.todolist.exceptions.InvalidEntityException;
 
@@ -35,6 +36,15 @@ public class GlobalExceptionHandler {
 	@ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
 	@ExceptionHandler({ InvalidEntityException.class, InvalidAttributeValue.class })
 	public Map<String, String> handleInvalidEntityException(Exception e) {
+		return Map.of(
+			ERROR, e.getMessage()
+		);
+	}
+
+	@ResponseBody
+	@ResponseStatus(HttpStatus.NOT_FOUND)
+	@ExceptionHandler(EntityNotFoundException.class)
+	public Map<String, String> handleEntityNotFoundException(Exception e) {
 		return Map.of(
 			ERROR, e.getMessage()
 		);

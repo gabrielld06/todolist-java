@@ -40,8 +40,9 @@ public class UserController {
         }
 
         return Map.of(
-            "message", "User created successfully",
             "id", user.getId().toString(),
+            "username", user.getUsername(),
+            "name", user.getName(),
             "createdAt", user.getCreatedAt().toString()
         );
     }

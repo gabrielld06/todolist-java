@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.util.Base64;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -25,7 +26,7 @@ public class TaskFilterAuth extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         // Only for tasks
-        if(!request.getServletPath().equals("/task")) {
+        if(!request.getServletPath().startsWith("/task")) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -37,7 +38,7 @@ public class TaskFilterAuth extends OncePerRequestFilter {
         String authorization = request.getHeader("Authorization");
 
         if(authorization == null || authorization.length() < basicLenght) {
-            response.sendError(401, authErrorMessage);
+            response.sendError(HttpStatus.UNAUTHORIZED.value(), authErrorMessage);
             return;
         }
 
@@ -45,7 +46,7 @@ public class TaskFilterAuth extends OncePerRequestFilter {
         String[] credentials = new String(Base64.getDecoder().decode(authCode)).split(":");
 
         if(credentials.length != 2) {
-            response.sendError(401, authErrorMessage);
+            response.sendError(HttpStatus.UNAUTHORIZED.value(), authErrorMessage);
             return;
         }
 
@@ -56,7 +57,7 @@ public class TaskFilterAuth extends OncePerRequestFilter {
         UserModel user = this.userRepository.findByUsername(username);
 
         if(user == null || !BCrypt.verifyer().verify(password.toCharArray(), user.getPassword()).verified) {
-            response.sendError(401, authErrorMessage);
+            response.sendError(HttpStatus.UNAUTHORIZED.value(), authErrorMessage);
             return;
         }
 
