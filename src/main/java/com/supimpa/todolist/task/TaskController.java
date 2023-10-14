@@ -1,8 +1,6 @@
 package com.supimpa.todolist.task;
 
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +17,6 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.supimpa.todolist.exceptions.EntityNotFoundException;
-import com.supimpa.todolist.exceptions.InvalidAttributeValue;
 import com.supimpa.todolist.exceptions.InvalidEntityException;
 import com.supimpa.todolist.utils.Utils;
 
@@ -32,25 +29,13 @@ public class TaskController {
     private ITaskRepository taskRepository;
 
     private static final String TASK_NOT_FOUND = "Task not found";
+    private static final String USER_ID = "userId";
 
     @PostMapping()
     @ResponseBody
     @ResponseStatus(HttpStatus.CREATED)
-    public TaskModel create(@RequestBody TaskModel task, HttpServletRequest request) throws InvalidEntityException, InvalidAttributeValue {
-        task.setUserId((UUID) request.getAttribute("userId"));
-
-        // Data validation
-        LocalDateTime currentDate = LocalDateTime.now();
-        LocalDateTime startDate = task.getStartAt();
-        LocalDateTime endDate = task.getEndAt();
-
-        if(startDate.isBefore(currentDate)) {
-            throw new InvalidAttributeValue("Start date cannot be in the past");
-        }
-
-        if(endDate.isBefore(startDate)) {
-            throw new InvalidAttributeValue("End date should be after Start date");
-        }
+    public TaskModel create(@RequestBody TaskModel task, HttpServletRequest request) throws InvalidEntityException {
+        task.setUserId((UUID) request.getAttribute(USER_ID));
 
         try {
             return this.taskRepository.save(task);
@@ -63,7 +48,7 @@ public class TaskController {
     @ResponseBody
     @ResponseStatus(HttpStatus.OK)
     public List<TaskModel> list(HttpServletRequest request) {
-        UUID userId = (UUID) request.getAttribute("userId");
+        UUID userId = (UUID) request.getAttribute(USER_ID);
 
         return this.taskRepository.findByUserId(userId);
     }
@@ -72,22 +57,32 @@ public class TaskController {
     @ResponseBody
     @ResponseStatus(HttpStatus.OK)
     public TaskModel get(@PathVariable UUID id, HttpServletRequest request) throws EntityNotFoundException {
-        return this.taskRepository.findById(id).orElseThrow(() -> new EntityNotFoundException(TASK_NOT_FOUND));
+        TaskModel task = this.taskRepository.findById(id).orElseThrow(() -> new EntityNotFoundException(TASK_NOT_FOUND));
+
+        if(!task.getUserId().equals(request.getAttribute(USER_ID))) {
+            throw new EntityNotFoundException(TASK_NOT_FOUND);
+        }
+
+        return task;
     }
 
     @PutMapping("/{id}")
     @ResponseBody
     @ResponseStatus(HttpStatus.OK)
-    public TaskModel update(@RequestBody TaskModel task, @PathVariable UUID id, HttpServletRequest request) throws EntityNotFoundException {
-        Optional<TaskModel> taskToUpdate = this.taskRepository.findById(id);
+    public TaskModel update(@RequestBody TaskModel task, @PathVariable UUID id, HttpServletRequest request) throws Throwable {
+        TaskModel taskToUpdate = this.taskRepository.findById(id).orElseThrow(() -> new EntityNotFoundException(TASK_NOT_FOUND));
 
-        if(taskToUpdate.isEmpty()) {
+        if(!taskToUpdate.getUserId().equals(request.getAttribute(USER_ID))) {
             throw new EntityNotFoundException(TASK_NOT_FOUND);
         }
 
         Utils.copyNonNullPropertires(task, taskToUpdate);
 
-        return this.taskRepository.save(task);
+        try {
+            return this.taskRepository.save(taskToUpdate);
+        } catch(Exception e) {
+            throw new InvalidEntityException("Invalid task entity");
+        }
     }
 
     @DeleteMapping("/{id}")
@@ -95,6 +90,10 @@ public class TaskController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable UUID id, HttpServletRequest request) throws EntityNotFoundException {
         TaskModel task = this.taskRepository.findById(id).orElseThrow(() -> new EntityNotFoundException(TASK_NOT_FOUND));
+
+        if(!task.getUserId().equals(request.getAttribute(USER_ID))) {
+            throw new EntityNotFoundException(TASK_NOT_FOUND);
+        }
 
         this.taskRepository.delete(task);
     }

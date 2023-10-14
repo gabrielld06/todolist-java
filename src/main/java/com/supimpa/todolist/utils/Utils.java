@@ -14,8 +14,12 @@ public class Utils {
         throw new IllegalStateException("Utility class");
     }
 
-    public static void copyNonNullPropertires(Object source, Object target) {
-        BeanUtils.copyProperties(source, target, getNullPropertyNames(source));
+    public static void copyNonNullPropertires(Object source, Object target) throws Throwable {
+        try {
+            BeanUtils.copyProperties(source, target, getNullPropertyNames(source));
+        } catch(Exception e) {
+            throw e.getCause().getCause();
+        }
     }
 
     public static String[] getNullPropertyNames(Object source) {
